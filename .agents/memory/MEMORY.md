@@ -1,0 +1,1 @@
+- [Academic Assistant Architecture](academic-assistant-arch.md) — stack decisions, camelCase contract, blank screen fix, sentence-transformers install, CORS, auth token key
