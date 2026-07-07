@@ -66,6 +66,14 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("DATABASE_URL not set — database features unavailable")
 
+    # Pre-warm the embedding model so first document upload is instant
+    try:
+        from backend.services.embedding_service import get_embedding_model
+        get_embedding_model()
+        logger.info("Embedding model pre-loaded and ready")
+    except Exception as e:
+        logger.warning(f"Could not pre-load embedding model: {e}")
+
     logger.info("Application startup complete")
     yield
 

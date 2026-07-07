@@ -67,7 +67,10 @@ def clean_text(text: str) -> str:
 
 def split_into_chunks(text: str) -> List[Tuple[str, dict]]:
     """Split text into semantic chunks with metadata."""
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    try:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+    except ImportError:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.CHUNK_SIZE,

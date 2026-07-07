@@ -44,15 +44,18 @@ def add_documents_to_store(
 
     ids = [f"{document_id}_{i}" for i in range(len(chunks))]
 
-    # Add document_id to each metadata
+    # Add document_id and strip None values (ChromaDB only accepts str/int/float/bool)
+    clean_metadatas = []
     for meta in metadatas:
-        meta["document_id"] = document_id
+        cleaned = {k: v for k, v in meta.items() if v is not None}
+        cleaned["document_id"] = document_id
+        clean_metadatas.append(cleaned)
 
     collection.add(
         ids=ids,
         embeddings=embeddings,
         documents=chunks,
-        metadatas=metadatas,
+        metadatas=clean_metadatas,
     )
 
 
