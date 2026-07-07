@@ -5,7 +5,7 @@ import { uploadDocumentApi } from "@/lib/api-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { FileText, UploadCloud, Search, MoreVertical, Trash2, Loader2, FileCheck2, AlertCircle } from "lucide-react";
+import { UploadCloud, Search, MoreVertical, Trash2, Loader2, FileCheck2, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getAuthHeaders } from "@/lib/api-upload";
 
 export default function Documents() {
   const queryClient = useQueryClient();
@@ -52,6 +53,8 @@ export default function Documents() {
     }
   };
 
+  const [reprocessingIds, setReprocessingIds] = useState<Set<string>>(new Set());
+
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete "${name}"?`)) {
       deleteDoc.mutate({ documentId: id }, {
@@ -61,6 +64,37 @@ export default function Documents() {
         },
         onError: () => toast.error("Failed to delete document")
       });
+    }
+  };
+
+  const handleReprocess = async (id: string, name: string) => {
+    setReprocessingIds(prev => new Set(prev).add(id));
+    try {
+      const res = await fetch(`/api/documents/${id}/reprocess`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Retry failed');
+      }
+      toast.success(`Retrying "${name}"…`);
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      // Poll until no longer pending/processing
+      const poll = setInterval(async () => {
+        await queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+        const docs = queryClient.getQueryData<{ id: string; status: string }[]>(["/api/documents"]);
+        const doc = docs?.find(d => d.id === id);
+        if (doc && doc.status !== 'pending' && doc.status !== 'processing') {
+          clearInterval(poll);
+          setReprocessingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+          if (doc.status === 'ready') toast.success(`"${name}" processed successfully`);
+          else toast.error(`"${name}" failed again — check the file`);
+        }
+      }, 2000);
+    } catch (err: any) {
+      toast.error(err.message || 'Retry failed');
+      setReprocessingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
   };
 
@@ -134,6 +168,18 @@ export default function Documents() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="glass-panel">
+                          {doc.status === 'error' && (
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={() => handleReprocess(doc.id, doc.name)}
+                              disabled={reprocessingIds.has(doc.id)}
+                            >
+                              {reprocessingIds.has(doc.id)
+                                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                : <RefreshCw className="w-4 h-4 mr-2" />}
+                              Retry Processing
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer" onClick={() => handleDelete(doc.id, doc.name)}>
                             <Trash2 className="w-4 h-4 mr-2" /> Delete
                           </DropdownMenuItem>

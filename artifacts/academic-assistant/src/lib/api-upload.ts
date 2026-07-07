@@ -1,3 +1,8 @@
+export function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('aa_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function uploadDocumentApi(file: File) {
   const token = localStorage.getItem('aa_token');
   const formData = new FormData();
