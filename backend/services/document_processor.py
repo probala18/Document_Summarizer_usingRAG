@@ -141,12 +141,33 @@ def process_document(document_id: str, file_path: str, ext: str) -> None:
         from backend.services.embedding_service import embed_texts
         embeddings = embed_texts(chunks)
 
-        # 5. Store in ChromaDB
-        logger.info(f"Storing embeddings in vector store")
-        from backend.rag.vector_store import add_documents_to_store
-        add_documents_to_store(document_id, chunks, embeddings, metadatas)
+        # 5. Re-check the document still exists (user may have deleted it during processing)
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            logger.warning(f"Document {document_id} deleted during processing — skipping vector store write")
+            return
 
-        # 6. Generate a quick summary for the document record
+        # Store in ChromaDB
+        logger.info(f"Storing embeddings in vector store")
+        from backend.rag.vector_store import add_documents_to_store, delete_document_from_store
+        try:
+            add_documents_to_store(document_id, chunks, embeddings, metadatas)
+        except Exception as vec_err:
+            logger.error(f"Vector store write failed for {document_id}: {vec_err}", exc_info=True)
+            raise  # re-raise so outer handler marks document as ERROR
+
+        # 6. Final existence check before committing READY status
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            # Document was deleted after vector write — compensate by cleaning up ChromaDB
+            logger.warning(f"Document {document_id} deleted after vector write — removing orphan vectors")
+            try:
+                delete_document_from_store(document_id)
+            except Exception:
+                pass
+            return
+
+        # Generate a quick summary for the document record
         short_summary = clean[:500] + "..." if len(clean) > 500 else clean
 
         # Update document record

@@ -4,6 +4,8 @@ import os
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 
+_INSECURE_DEFAULT = "change-me-in-production-32-chars!!"
+
 
 class Settings(BaseSettings):
     # App
@@ -13,7 +15,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # Security
-    SECRET_KEY: str = os.environ.get("SESSION_SECRET", "change-me-in-production-32-chars!!")
+    SECRET_KEY: str = os.environ.get("SESSION_SECRET", _INSECURE_DEFAULT)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 

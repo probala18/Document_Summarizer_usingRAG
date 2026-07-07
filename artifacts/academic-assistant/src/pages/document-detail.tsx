@@ -154,7 +154,7 @@ function SummariesTab({ docId }: { docId: string }) {
           <CardDescription>Select a format for your summary</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Select value={type} onValueChange={(v: any) => setType(v)}>
+          <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
             <SelectTrigger>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>

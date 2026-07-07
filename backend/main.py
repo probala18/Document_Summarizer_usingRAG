@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.core.config import get_settings
+from backend.core.config import get_settings, _INSECURE_DEFAULT
 from backend.core.database import create_tables
 
 # Import all models to ensure they are registered with Base
@@ -44,6 +44,13 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+
+    # Fail fast if the JWT secret is still the insecure default
+    if settings.SECRET_KEY == _INSECURE_DEFAULT:
+        logger.warning(
+            "SESSION_SECRET is not set — using insecure default key. "
+            "Set SESSION_SECRET in your environment before going to production."
+        )
 
     # Create upload directory
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

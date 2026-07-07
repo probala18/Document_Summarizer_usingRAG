@@ -1,3 +1,4 @@
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { Route, Switch, Router as WouterRouter, Redirect } from 'wouter';
@@ -27,7 +28,12 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, params }: any) {
+interface ProtectedRouteProps {
+  component: React.ComponentType<{ params?: Record<string, string> }>;
+  params?: Record<string, string>;
+}
+
+function ProtectedRoute({ component: Component, params }: ProtectedRouteProps) {
   const { token, isLoading } = useAuth();
 
   if (isLoading) {
